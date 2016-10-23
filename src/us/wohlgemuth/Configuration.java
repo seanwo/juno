@@ -92,7 +92,7 @@ public class Configuration {
             Element root = doc.createElement("configuration");
             doc.appendChild(root);
             Element interval = doc.createElement("interval");
-            interval.setAttribute("minutes", "60");
+            interval.setAttribute("minutes", "0");
             root.appendChild(interval);
             Element smtp = doc.createElement("smtp");
             smtp.setAttribute("host", "smtp.gmail.com");
@@ -119,6 +119,7 @@ public class Configuration {
             return false;
         }
         System.out.println("created initial configuration file [" + filename + "]");
+        System.exit(0);  //exit program on creation of new configuration file
         return true;
     }
 
