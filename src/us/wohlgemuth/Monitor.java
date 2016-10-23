@@ -43,7 +43,7 @@ public class Monitor {
                         body.append("\n");
                     }
                     System.out.println(body.toString());
-                    String subject = "Jupiter Change Detected for " + currStudentData.getName();
+                    String subject = "Jupiter Change Detected ("+currStudentData.getTerm()+") for " + currStudentData.getName();
                     notifier.sendEmail(subject, body.toString(), site.getemailAddresses());
                     System.out.println("Updating student data.");
                 } else {
