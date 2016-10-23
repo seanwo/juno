@@ -39,6 +39,10 @@ public class Configuration {
         }
     }
 
+    private String smtpHost;
+    private String smtpUser;
+    private String smtpPassword;
+    private Integer intervalMinutes;
     private ArrayList<Site> sites = new ArrayList<>();
 
     public Configuration(){
@@ -49,6 +53,22 @@ public class Configuration {
 
     public ArrayList<Site> getSites() {
         return sites;
+    }
+
+    public String getSmtpHost(){
+        return smtpHost;
+    }
+
+    public String getSmtpUser(){
+        return smtpUser;
+    }
+
+    public String getSmtpPassword(){
+        return smtpPassword;
+    }
+
+    public Integer getIntervalMinutes() {
+        return intervalMinutes;
     }
 
     private boolean isFirstTimeConfiguration(){
@@ -62,6 +82,14 @@ public class Configuration {
             Document doc = builder.newDocument();
             Element root = doc.createElement("configuration");
             doc.appendChild(root);
+            Element interval = doc.createElement("interval");
+            interval.setAttribute("minutes","60");
+            root.appendChild(interval);
+            Element smtp = doc.createElement("smtp");
+            smtp.setAttribute("host","smtp.gmail.com");
+            smtp.setAttribute("user","user@gmail.com");
+            smtp.setAttribute("password","password");
+            root.appendChild(smtp);
             Element site = doc.createElement("site");
             Element url = doc.createElement("url");
             url.appendChild(doc.createTextNode("https://login.jupitered.com/login/private.php?######-#-##########"));
@@ -94,6 +122,31 @@ public class Configuration {
             DocumentBuilderFactory dbFactory = DocumentBuilderFactory.newInstance();
             DocumentBuilder dBuilder = dbFactory.newDocumentBuilder();
             Document doc = dBuilder.parse(file);
+            NodeList nlInterval = doc.getElementsByTagName("interval");
+            if (nlInterval.getLength()!=1){
+                System.err.println("configuration file must have one interval node");
+                return;
+            }
+            Element eInterval = (Element) nlInterval.item(0);
+            String minutes = eInterval.getAttribute("minutes");
+            if (null==minutes) {
+                System.err.println("inteval node missing required minutes attribute");
+                return;
+            }
+            intervalMinutes = new Integer(minutes);
+            NodeList nlSmtp = doc.getElementsByTagName("smtp");
+            if (nlSmtp.getLength()!=1){
+                System.err.println("configuration file must have one smtp node");
+                return;
+            }
+            Element eSmtp = (Element) nlSmtp.item(0);
+            smtpHost = eSmtp.getAttribute("host");
+            smtpUser = eSmtp.getAttribute("user");
+            smtpPassword = eSmtp.getAttribute("password");
+            if ((null==smtpHost) || (null==smtpUser) || (null==smtpPassword)) {
+                System.err.println("smtp node missing required attribute(s)");
+                return;
+            }
             NodeList nlSites = doc.getElementsByTagName("site");
             if (nlSites.getLength()<1){
                 System.err.println("configuration file must have at least one site node");

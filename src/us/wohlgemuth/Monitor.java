@@ -10,37 +10,54 @@ public class Monitor {
     }
 
     public void run(){
-        for (Configuration.Site site: config.getSites()){
 
-            System.out.println("Begin site analysis ["+site.getUrl().toExternalForm()+"]");
-            SiteParser siteParser = new SiteParser(site.getUrl());
-            StudentData currStudentData = siteParser.getStudentData();
-            if (null==currStudentData){
-                System.err.println("Unable to parse student data");
-                continue;
-            }
-            Integer studentId = currStudentData.getId();
+        Notifier notifier = new Notifier(config.getSmtpHost(), config.getSmtpUser(), config.getSmtpPassword());
 
-            final String filename = System.getProperty("user.home") + "/.juno/"+studentId.toString()+".ser";
-            StudentData prevStudentData = StudentData.deserialize(filename);
+        while (true) {
+            for (Configuration.Site site : config.getSites()) {
 
-            if ((null!=prevStudentData) && (prevStudentData.getTerm().compareTo(currStudentData.getTerm())==0)){
-                HashSet<Integer> changeSet = StudentData.getChangeSet(prevStudentData, currStudentData);
-                if (changeSet.isEmpty()){
-                    System.out.println("No changes detected.");
+                System.out.println("Begin site analysis [" + site.getUrl().toExternalForm() + "]");
+                SiteParser siteParser = new SiteParser(site.getUrl());
+                StudentData currStudentData = siteParser.getStudentData();
+                if (null == currStudentData) {
+                    System.err.println("Unable to parse student data");
                     continue;
                 }
-                System.out.println("Changes detected!");
-                for (Integer classId : changeSet) {
-                    System.out.println(currStudentData.getClassName(classId));
-                    System.out.println(currStudentData.getAssignmentBlob(classId));
+                Integer studentId = currStudentData.getId();
+                String filename = System.getProperty("user.home") + "/.juno/" + studentId.toString() + ".ser";
+                StudentData prevStudentData = StudentData.deserialize(filename);
+                //prevStudentData = new StudentData(currStudentData.getId(),currStudentData.getName(), currStudentData.getTerm(), null, null);
+
+                if ((null != prevStudentData) && (prevStudentData.getTerm().compareTo(currStudentData.getTerm()) == 0)) {
+                    HashSet<Integer> changeSet = StudentData.getChangeSet(prevStudentData, currStudentData);
+                    if (changeSet.isEmpty()) {
+                        System.out.println("No changes detected.");
+                        continue;
+                    }
+                    System.out.println("Changes detected!");
+                    StringBuilder body = new StringBuilder();
+                    for (Integer classId : changeSet) {
+                        body.append(currStudentData.getClassName(classId));
+                        body.append("\n\n");
+                        body.append(currStudentData.getAssignmentBlob(classId));
+                        body.append("\n");
+                    }
+                    System.out.println(body.toString());
+                    String subject = "Jupiter Change Detected for " + currStudentData.getName();
+                    notifier.sendEmail(subject, body.toString(), site.getemailAddresses());
+                    System.out.println("Updating student data.");
+                } else {
+                    System.out.println("Saving initial data for student.");
                 }
-                System.out.println("Updating student data.");
-            } else {
-                System.out.println("Saving initial data for student.");
+
+                currStudentData.serialize(filename);
             }
 
-            currStudentData.serialize(filename);
+            try {
+                Thread.sleep(config.getIntervalMinutes() * 60 * 1000);
+            }catch (InterruptedException e){
+                break;
+            }
         }
     }
 }
