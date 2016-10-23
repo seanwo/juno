@@ -2,7 +2,7 @@
 
 Juno was named after the [Juno spacecraft](https://en.wikipedia.org/wiki/Juno_(spacecraft)) that is orbiting/monitoring Jupiter.
 
-This command line application was designed to navigate the [JupiterEd](https://login.jupitered.com/login/) grades website and detect changes per term for a list of students.  Upon detecting an assignment change for the current term, the system is designed to send an email to a list of email addresses that shows which classes and which assignment have changed.
+This command line application was designed to navigate the [JupiterEd](https://login.jupitered.com/login/) grades website and detect changes (per term) for a list of students.  Upon detecting an assignment change for the current term, the system is designed to send an email to a list of email addresses that shows which classes and which assignment have changed.
 
 To setup the system you will need:
 
