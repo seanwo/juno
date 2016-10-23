@@ -24,6 +24,7 @@ public class Utilities {
 
     private static ArrayList<String> getArrayOfLines(String s) {
         ArrayList<String> list = new ArrayList<>();
+        if (s == null) return list;
         StringReader stringReader = new StringReader(s);
         BufferedReader bufferedReader = new BufferedReader(stringReader);
         String line;
@@ -48,9 +49,6 @@ public class Utilities {
     }
 
     public static String Diff(String a, String b) {
-        if ((a == null) || (b == null)) {
-            throw new IllegalArgumentException("strings for diff can not be null");
-        }
         StringBuilder diff = new StringBuilder();
         ArrayList<String> aList = getArrayOfLines(a);
         ArrayList<String> bList = getArrayOfLines(b);
