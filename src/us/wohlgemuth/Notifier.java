@@ -16,26 +16,26 @@ public class Notifier {
     String user;
     String password;
 
-    public Notifier(String host, String user, String password){
-        this.host=host;
-        this.user=user;
-        this.password=password;
+    public Notifier(String host, String user, String password) {
+        this.host = host;
+        this.user = user;
+        this.password = password;
     }
 
-    public void sendEmail(String subject, String body, ArrayList<String> emailAddresses){
+    public void sendEmail(String subject, String body, ArrayList<String> emailAddresses) {
         Properties props = System.getProperties();
-        props.put("mail.smtps.host",host);
-        props.put("mail.smtps.auth","true");
+        props.put("mail.smtps.host", host);
+        props.put("mail.smtps.auth", "true");
         Session session = Session.getInstance(props, null);
         Message msg = new MimeMessage(session);
         try {
             msg.setFrom(new InternetAddress(user));
             StringBuilder recipients = new StringBuilder();
-            Boolean first=true;
-            for (String emailAddress: emailAddresses){
+            Boolean first = true;
+            for (String emailAddress : emailAddresses) {
                 if (!first) recipients.append(",");
                 recipients.append(emailAddress);
-                first=false;
+                first = false;
             }
             msg.setRecipients(Message.RecipientType.TO, InternetAddress.parse(recipients.toString(), false));
             msg.setSubject(subject);
@@ -47,7 +47,7 @@ public class Notifier {
             t.sendMessage(msg, msg.getAllRecipients());
             System.out.println("Response: " + t.getLastServerResponse());
             t.close();
-        }catch (MessagingException e){
+        } catch (MessagingException e) {
             e.printStackTrace();
         }
     }

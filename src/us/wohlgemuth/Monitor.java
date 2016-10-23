@@ -5,11 +5,11 @@ import java.util.HashSet;
 public class Monitor {
     private Configuration config;
 
-    public Monitor(Configuration config){
-        this.config=config;
+    public Monitor(Configuration config) {
+        this.config = config;
     }
 
-    public void run(){
+    public void run() {
 
         Notifier notifier = new Notifier(config.getSmtpHost(), config.getSmtpUser(), config.getSmtpPassword());
 
@@ -53,9 +53,11 @@ public class Monitor {
                 currStudentData.serialize(filename);
             }
 
+            if (config.getIntervalMinutes() == 0) break;
+
             try {
                 Thread.sleep(config.getIntervalMinutes() * 60 * 1000);
-            }catch (InterruptedException e){
+            } catch (InterruptedException e) {
                 break;
             }
         }
