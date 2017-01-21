@@ -6,12 +6,19 @@ import org.jsoup.nodes.Document;
 import org.jsoup.nodes.Element;
 import org.jsoup.select.Elements;
 
+import javax.script.ScriptEngine;
+import javax.script.ScriptEngineManager;
+import javax.script.ScriptException;
 import java.io.IOException;
 import java.net.MalformedURLException;
 import java.net.URL;
+import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.Iterator;
+import java.util.Map;
 import java.util.Set;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 public class SiteParser {
 
@@ -24,15 +31,18 @@ public class SiteParser {
     private URL url;
 
     private final String SiteCookieName = "__cfduid";
+    private final String ClearanceCookieName = "cf_clearance";
+    private final String UserAgentString = "Mozilla/5.0 (Windows NT 6.3; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/55.0.2883.87 Safari/537.36";
 
     public SiteParser(URL url) {
         this.url = url;
     }
 
     private Connection connect(URL url, Connection.Method method) {
-        Connection connection = Jsoup.connect(url.toExternalForm());
-        connection.method(method);
-        return connection;
+        return Jsoup.connect(url.toExternalForm())
+                .userAgent(UserAgentString)
+                .ignoreHttpErrors(true)
+                .method(method);
     }
 
     private Connection.Response getResponse(Connection connection) throws SiteException {
@@ -46,16 +56,28 @@ public class SiteParser {
         return response;
     }
 
-    private String getCookie(Connection.Response response, String name) throws SiteException {
-        String cookie = response.cookie(name);
-        if ((null == cookie) || (cookie.isEmpty())) {
-            throw new SiteException("unable to acquire cookie");
+    private Map<String, String> getCookies(Connection.Response response, ArrayList<String> names) throws SiteException {
+        HashMap<String, String> cookies = new HashMap<>();
+
+        for (Iterator<String> i = names.iterator(); i.hasNext(); ) {
+            String name = i.next();
+            String cookie = response.cookie(name);
+            if ((null != cookie) || (!cookie.isEmpty())) {
+                cookies.put(name, cookie);
+            }
         }
-        return cookie;
+
+        if (cookies.size() != names.size()) {
+            throw new SiteException("unable to acquire all required cookies");
+        }
+
+        return cookies;
     }
 
-    private void setCookie(Connection connection, String cookieName, String cookieValue) {
-        connection.cookie(cookieName, cookieValue);
+    private void setCookies(Connection connection, Map<String, String> cookies) {
+        if (cookies.size() > 0) {
+            connection.cookies(cookies);
+        }
     }
 
     private Document getDocument(Connection.Response response) throws SiteException {
@@ -69,9 +91,9 @@ public class SiteParser {
         return doc;
     }
 
-    private Document navigate(URL url, String cookie, HashMap<String, String> params) throws SiteException {
+    private Document navigate(URL url, Map<String, String> cookies, HashMap<String, String> params) throws SiteException {
         Connection connection = connect(url, Connection.Method.POST);
-        setCookie(connection, SiteCookieName, cookie);
+        setCookies(connection, cookies);
         setFormParams(connection, params);
         Connection.Response response = getResponse(connection);
         Document document = getDocument(response);
@@ -202,13 +224,13 @@ public class SiteParser {
         return assignmentBuilder.toString();
     }
 
-    private HashMap<Integer, String> getAssignmentBlobs(Set<Integer> classes, URL url, String cookie, HashMap<String, String> params) throws SiteException {
+    private HashMap<Integer, String> getAssignmentBlobs(Set<Integer> classes, URL url, Map<String, String> cookies, HashMap<String, String> params) throws SiteException {
         HashMap<Integer, String> assignmentBlobs = new HashMap<>();
         Iterator<Integer> it = classes.iterator();
         while (it.hasNext()) {
             Integer classId = it.next();
             params.put("class1", classId.toString());
-            Document document = navigate(url, cookie, params);
+            Document document = navigate(url, cookies, params);
             String assignments = getAssignments(document);
             assignmentBlobs.put(classId, assignments);
         }
@@ -220,19 +242,89 @@ public class SiteParser {
         try {
             Connection connection = connect(url, Connection.Method.GET);
             Connection.Response response = getResponse(connection);
-            String cookie = getCookie(response, SiteCookieName);
+            Map<String, String> cookies;
+            ArrayList<String> cookieNames = new ArrayList<>();
+            cookieNames.add(SiteCookieName);
+            if (response.body().contains("jschl-answer")) {
+                response = solveChallenge(response);
+                cookieNames.add(ClearanceCookieName);
+            }
+            cookies = getCookies(response, cookieNames);
             Document document = getDocument(response);
             URL formUrl = getFormURL(document);
             HashMap<String, String> params = getDefaultFormParams(document);
-            document = navigate(formUrl, cookie, params);
+            document = navigate(formUrl, cookies, params);
             String studentName = getStudentName(document);
             String term = getTerm(document);
             HashMap<Integer, String> classes = getClasses(document);
-            HashMap<Integer, String> assignmentBlobs = getAssignmentBlobs(classes.keySet(), formUrl, cookie, params);
+            HashMap<Integer, String> assignmentBlobs = getAssignmentBlobs(classes.keySet(), formUrl, cookies, params);
             student = new StudentData(new Integer(params.get("stud")), studentName, term, classes, assignmentBlobs);
         } catch (SiteException e) {
             e.printStackTrace();
         }
         return student;
+    }
+
+    public Connection.Response solveChallenge(Connection.Response challengeResponse) throws SiteException {
+        String body = challengeResponse.body();
+        URL url = challengeResponse.url();
+        String host = url.getHost();
+        Document doc = getDocument(challengeResponse);
+        URL challengeUrl = getFormURL(doc);
+
+        Pattern pattern = Pattern.compile("name=\"jschl_vc\" value=\"(\\w+)\"");
+        Matcher matcher = pattern.matcher(body);
+        if (!matcher.find()) {
+            throw new SiteException("Unable to find challenge (jschl_vc)");
+        }
+        String jsChlVc = matcher.group(1);
+        pattern = Pattern.compile("name=\"pass\" value=\"(.+?)\"");
+        matcher = pattern.matcher(body);
+        if (!matcher.find()) {
+            throw new SiteException("Unable to find challenge (pass)");
+        }
+        String pass = matcher.group(1);
+        pattern = Pattern.compile("getElementById\\('cf-content'\\)[\\s\\S]+?setTimeout.+?\\r?\\n([\\s\\S]+?a\\.value =.+?)\\r?\\n", Pattern.CASE_INSENSITIVE);
+        matcher = pattern.matcher(body);
+        if (!matcher.find()) {
+            throw new SiteException("Unable to find challenge (method)");
+        }
+        String challenge = matcher.group(1);
+
+        pattern = Pattern.compile("a\\.value =(.+?) \\+ .+?;", Pattern.CASE_INSENSITIVE);
+        challenge = pattern.matcher(challenge).replaceAll("$1");
+        pattern = Pattern.compile("\\s{3,}[a-z](?: = |\\.).+", Pattern.MULTILINE);
+        challenge = pattern.matcher(challenge).replaceAll("");
+        pattern = Pattern.compile("'; \\d+'", Pattern.MULTILINE);
+        challenge = pattern.matcher(challenge).replaceAll("");
+
+        ScriptEngine engine = new ScriptEngineManager().getEngineByName("javascript");
+        Double answer;
+        try {
+            answer = (Double) engine.eval(challenge) + host.length();
+        } catch (ScriptException e) {
+            throw new SiteException("Unable to evaluate challenge method");
+        }
+
+        HashMap<String, String> params = new HashMap<>();
+        params.put("jschl_vc", jsChlVc);
+        params.put("pass", pass);
+        params.put("jschl_answer", String.format("%.0f", answer));
+
+        try {Thread.sleep(6000);} catch (InterruptedException e) {}
+
+        Connection connection = Jsoup.connect(challengeUrl.toExternalForm())
+                .userAgent(UserAgentString)
+                .referrer(url.toString())
+                .data(params)
+                .method(Connection.Method.GET)
+                .followRedirects(true);
+        Connection.Response response = getResponse(connection);
+
+        if (!response.cookies().containsKey(ClearanceCookieName)) {
+            throw new SiteException("Unable to obtain clearance cookie");
+        }
+
+        return response;
     }
 }
