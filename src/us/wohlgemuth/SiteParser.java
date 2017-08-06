@@ -125,25 +125,7 @@ public class SiteParser {
         return urlForm;
     }
 
-    private String getSchoolYear(Element form) throws SiteException {
-        Elements elements = form.getElementsByAttributeValue("name", "schoolyear");
-        if (elements.size() != 1) {
-            throw new SiteException("unable to determine school year");
-        }
-        Element element = elements.get(0);
-        Elements selected = element.getElementsByAttribute("selected");
-        if (selected.size() != 1) {
-            throw new SiteException("unable to determine school year");
-        }
-        Element schoolYear = selected.get(0);
-        String value = schoolYear.attr("value");
-        if (selected.isEmpty()) {
-            throw new SiteException("unable to determine school year");
-        }
-        return value;
-    }
-
-    private HashMap<String, String> getDefaultFormParams(Document document) throws SiteException {
+    private HashMap<String, String> getFormParams(Document document) throws SiteException {
         Element eForm = getFormElement(document);
         Elements inputElements = eForm.getElementsByTag("input");
         if (inputElements.isEmpty()) {
@@ -158,9 +140,6 @@ public class SiteParser {
                 params.put(name, value);
             }
         }
-        String schoolYear = getSchoolYear(eForm);
-        params.put("schoolyear", schoolYear);
-        params.put("to", "grades");
         return params;
     }
 
@@ -169,55 +148,127 @@ public class SiteParser {
     }
 
     private HashMap<Integer, String> getClasses(Document document) throws SiteException {
-        Elements elements = document.getElementsByAttributeValue("name", "classmenu");
-        if (elements.size() != 1) {
-            throw new SiteException("unable to determine classes");
+        Elements elements = document.getElementsByTag("script");
+        if (elements.size() <= 0) {
+            throw new SiteException("unable to determine class menu script");
         }
-        Element element = elements.get(0);
-        Elements eClasses = element.getElementsByTag("option");
-        HashMap<Integer, String> classes = new HashMap<>();
-        for (Element e : eClasses) {
-            String value = e.attr("value");
-            String name = e.text();
-            if ((!value.isEmpty())) {
-                classes.put(new Integer(value), name);
+        Element element = null;
+        for (Element e : elements) {
+            if (e.data().contains("menu(\'classmenu\'")) {
+                element = e;
+                break;
             }
         }
+        if (element == null) {
+            throw new SiteException("unable to determine class menu script");
+        }
+
+        String menu = element.data();
+        Pattern menuPattern = Pattern.compile("\\[(.*?)\\]");
+        Matcher menuMatcher = menuPattern.matcher(menu);
+
+        HashMap<Integer, String> classes = new HashMap<>();
+
+        while (menuMatcher.find()) {
+            String nameValuePair = menuMatcher.group(1);
+            Pattern nameValuePairPattern = Pattern.compile("\\\"(.*?)\\\"");
+            Matcher nameValuePairMatcher = nameValuePairPattern.matcher(nameValuePair);
+
+            if (!nameValuePairMatcher.find()) {
+                throw new SiteException("unable to determine classes");
+            }
+            String name = nameValuePairMatcher.group(1);
+            if (!nameValuePairMatcher.find()) {
+                throw new SiteException("unable to determine classes");
+            }
+            String value = nameValuePairMatcher.group(1);
+
+            classes.put(new Integer(name), value);
+        }
+
         return classes;
     }
 
-    private String getTerm(Document document) throws SiteException {
-        Elements elements = document.getElementsByAttributeValue("name", "termmenu");
-        if (elements.size() != 1) {
-            throw new SiteException("unable to determine current term");
+    private String getTermName(Document document) throws SiteException {
+        Elements elements = document.getElementsByTag("script");
+        if (elements.size() <= 0) {
+            throw new SiteException("unable to determine terms menu script");
         }
-        Element element = elements.get(0);
-        Elements eTerms = element.getElementsByAttribute("selected");
-        if (eTerms.size() != 1) {
-            throw new SiteException("unable to determine current term");
+        Element element = null;
+        for (Element e : elements) {
+            if (e.data().contains("menu(\'termmenu\'")) {
+                element = e;
+                break;
+            }
         }
-        return eTerms.get(0).text();
+        if (element == null) {
+            throw new SiteException("unable to determine terms menu script");
+        }
+
+        String menu = element.data();
+
+        Pattern termIndexPattern = Pattern.compile("\\\"(.*?)\\\"");
+        Matcher termIndexMatcher = termIndexPattern.matcher(menu);
+        if (!termIndexMatcher.find()) {
+            throw new SiteException("unable to determine term index");
+        }
+        String index = termIndexMatcher.group(1);
+
+        Pattern menuPattern = Pattern.compile("\\[(.*?)\\]");
+        Matcher menuMatcher = menuPattern.matcher(menu);
+
+        HashMap<String, String> terms = new HashMap<>();
+
+        while (menuMatcher.find()) {
+            String nameValuePair = menuMatcher.group(1);
+            Pattern nameValuePairPattern = Pattern.compile("\\\"(.*?)\\\"");
+            Matcher nameValuePairMatcher = nameValuePairPattern.matcher(nameValuePair);
+
+            if (!nameValuePairMatcher.find()) {
+                throw new SiteException("unable to determine terms");
+            }
+            String name = nameValuePairMatcher.group(1);
+            if (!nameValuePairMatcher.find()) {
+                throw new SiteException("unable to determine terms");
+            }
+            String value = nameValuePairMatcher.group(1);
+
+            terms.put(name, value);
+        }
+
+        if (terms.isEmpty()) {
+            throw new SiteException("unable to determine terms");
+        }
+
+        return terms.get(index);
     }
 
     private String getStudentName(Document document) throws SiteException {
-        Elements elements = document.getElementsByAttributeValue("name", "changestud");
+        Elements elements = document.getElementsByAttributeValue("id", "studtab");
         if (elements.size() != 1) {
             throw new SiteException("unable to determine current student");
         }
         Element element = elements.get(0);
-        Elements eTerms = element.getElementsByAttribute("selected");
-        if (eTerms.size() != 1) {
-            throw new SiteException("unable to determine current student");
-        }
-        return eTerms.get(0).text();
+        String studentName = element.text();
+        studentName = studentName.replaceAll("Parent of ", "");
+        return studentName;
     }
 
     private String getAssignments(Document document) {
         StringBuilder assignmentBuilder = new StringBuilder();
-        Elements eAssignments = document.getElementsByAttributeValueStarting("onclick", "goassign");
+
+        Elements eAssignments = document.getElementsByClass("rowhi");
         for (Element eAssignment : eAssignments) {
-            for (Element child : eAssignment.children()) {
-                assignmentBuilder.append(child.text());
+            Element container = eAssignment.child(0);
+            Boolean bFirst = true;
+            for (Element child : container.children()) {
+                if (!child.text().isEmpty()) {
+                    if (!bFirst) {
+                        assignmentBuilder.append(" ");
+                    }
+                    assignmentBuilder.append(child.text());
+                    bFirst = false;
+                }
             }
             assignmentBuilder.append("\n");
         }
@@ -252,13 +303,17 @@ public class SiteParser {
             cookies = getCookies(response, cookieNames);
             Document document = getDocument(response);
             URL formUrl = getFormURL(document);
-            HashMap<String, String> params = getDefaultFormParams(document);
+            HashMap<String, String> params = getFormParams(document);
+            document = navigate(formUrl, cookies, params);
+            formUrl = getFormURL(document);
+            params = getFormParams(document);
+            params.put("to", "grades");
             document = navigate(formUrl, cookies, params);
             String studentName = getStudentName(document);
-            String term = getTerm(document);
+            String termName = getTermName(document);
             HashMap<Integer, String> classes = getClasses(document);
             HashMap<Integer, String> assignmentBlobs = getAssignmentBlobs(classes.keySet(), formUrl, cookies, params);
-            student = new StudentData(new Integer(params.get("stud")), studentName, term, classes, assignmentBlobs);
+            student = new StudentData(new Integer(params.get("stud")), studentName, termName, classes, assignmentBlobs);
         } catch (SiteException e) {
             e.printStackTrace();
         }
@@ -311,7 +366,10 @@ public class SiteParser {
         params.put("pass", pass);
         params.put("jschl_answer", String.format("%.0f", answer));
 
-        try {Thread.sleep(6000);} catch (InterruptedException e) {}
+        try {
+            Thread.sleep(6000);
+        } catch (InterruptedException e) {
+        }
 
         Connection connection = Jsoup.connect(challengeUrl.toExternalForm())
                 .userAgent(UserAgentString)
