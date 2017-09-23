@@ -12,8 +12,8 @@ public class Monitor {
         notifier = new Notifier(config.getSmtpHost(), config.getSmtpUser(), config.getSmtpPassword());
     }
 
-    private StudentData getCurrentStudentData(URL url) {
-        SiteParser siteParser = new SiteParser(url);
+    private StudentData getCurrentStudentData(URL url, String cookie) {
+        SiteParser siteParser = new SiteParser(url, cookie);
         return siteParser.getStudentData();
     }
 
@@ -56,7 +56,7 @@ public class Monitor {
         while (true) {
             for (Configuration.Site site : config.getSites()) {
                 System.out.println("Begin site analysis [" + site.getUrl().toExternalForm() + "]");
-                StudentData currStudentData = getCurrentStudentData(site.getUrl());
+                StudentData currStudentData = getCurrentStudentData(site.getUrl(), site.getCookie());
                 if (null == currStudentData) {
                     System.err.println("Unable to parse student data");
                     continue;

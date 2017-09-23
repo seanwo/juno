@@ -30,15 +30,21 @@ public class Configuration {
 
     public class Site {
         private URL url;
+        private String cookie;
         private ArrayList<String> emailAddresses = new ArrayList<>();
 
-        public Site(URL url, ArrayList<String> emailAddresses) {
+        public Site(URL url, String cookie, ArrayList<String> emailAddresses) {
             this.url = url;
+            this.cookie = cookie;
             this.emailAddresses = emailAddresses;
         }
 
         public URL getUrl() {
             return url;
+        }
+
+        public String getCookie() {
+            return cookie;
         }
 
         public ArrayList<String> getemailAddresses() {
@@ -101,6 +107,7 @@ public class Configuration {
             root.appendChild(smtp);
             Element site = doc.createElement("site");
             site.setAttribute("url", "https://login.jupitered.com/login/private.php?######-#-##########");
+            site.setAttribute("cookie", "##########");
             Element email1 = doc.createElement("email");
             email1.setAttribute("address", "nobody@domain.com");
             Element email2 = doc.createElement("email");
@@ -170,6 +177,10 @@ public class Configuration {
         if ((null == strUrl) || strUrl.isEmpty()) {
             throw new ConfigurationException("site node missing required url attribute");
         }
+        String cookie = eSite.getAttribute("cookie");
+        if ((null == cookie) || cookie.isEmpty()) {
+            throw new ConfigurationException("site node missing required cookie attribute");
+        }
         NodeList nlEmails = eSite.getElementsByTagName("email");
         if (nlEmails.getLength() < 1) {
             throw new ConfigurationException("site node must have at least one email node");
@@ -189,7 +200,7 @@ public class Configuration {
         } catch (MalformedURLException e) {
             throw new ConfigurationException(e.getMessage());
         }
-        Site site = new Site(url, emails);
+        Site site = new Site(url, cookie, emails);
         sites.add(site);
     }
 
