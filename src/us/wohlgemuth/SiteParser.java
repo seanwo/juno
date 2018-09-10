@@ -367,7 +367,7 @@ public class SiteParser {
         HashMap<String, String> params = new HashMap<>();
         params.put("jschl_vc", jsChlVc);
         params.put("pass", pass);
-        params.put("jschl_answer", String.format("%.0f", answer));
+        params.put("jschl_answer", String.format("%.10f", answer));
 
         try {
             Thread.sleep(6000);
