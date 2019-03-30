@@ -378,12 +378,14 @@ public class SiteParser {
         } catch (ScriptException e) {
             throw new SiteException("Unable to evaluate challenge method");
         }
+        String formatedAnswer = String.format("%.10f", answer);
+        formatedAnswer = formatedAnswer.indexOf(".") < 0 ? formatedAnswer : formatedAnswer.replaceAll("0*$", "").replaceAll("\\.$", "");
 
         HashMap<String, String> params = new HashMap<>();
         params.put("s", s);
         params.put("jschl_vc", jsChlVc);
         params.put("pass", pass);
-        params.put("jschl_answer", String.format("%.10f", answer));
+        params.put("jschl_answer", formatedAnswer);
 
         try {
             Thread.sleep(timeout);
