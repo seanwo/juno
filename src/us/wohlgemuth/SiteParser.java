@@ -330,18 +330,35 @@ public class SiteParser {
         Document doc = getDocument(challengeResponse);
         URL challengeUrl = getFormURL(doc);
 
-        Pattern pattern = Pattern.compile("name=\"jschl_vc\" value=\"(\\w+)\"");
+        Pattern pattern = Pattern.compile("name=\"s\" value=\"(.+?)\"");
         Matcher matcher = pattern.matcher(body);
+        if (!matcher.find()) {
+            throw new SiteException("Unable to find challenge (s)");
+        }
+        String s = matcher.group(1);
+
+        pattern = Pattern.compile("name=\"jschl_vc\" value=\"(\\w+)\"");
+        matcher = pattern.matcher(body);
         if (!matcher.find()) {
             throw new SiteException("Unable to find challenge (jschl_vc)");
         }
         String jsChlVc = matcher.group(1);
+
         pattern = Pattern.compile("name=\"pass\" value=\"(.+?)\"");
         matcher = pattern.matcher(body);
         if (!matcher.find()) {
             throw new SiteException("Unable to find challenge (pass)");
         }
         String pass = matcher.group(1);
+
+        pattern = Pattern.compile("f.submit\\(\\);\\r?\\n.+\\},.([0-9]*)");
+        matcher = pattern.matcher(body);
+        if (!matcher.find()) {
+            throw new SiteException("Unable to find challenge (timeout)");
+        }
+        String timeoutvalue = matcher.group(1);
+        int timeout = Integer.parseInt(timeoutvalue);
+
         pattern = Pattern.compile("getElementById\\('cf-content'\\)[\\s\\S]+?setTimeout.+?\\r?\\n([\\s\\S]+?a\\.value =.+?)\\r?\\n", Pattern.CASE_INSENSITIVE);
         matcher = pattern.matcher(body);
         if (!matcher.find()) {
@@ -349,11 +366,9 @@ public class SiteParser {
         }
         String challenge = matcher.group(1);
 
-        pattern = Pattern.compile("a\\.value =(.+?) \\+ .+?;", Pattern.CASE_INSENSITIVE);
-        challenge = pattern.matcher(challenge).replaceAll("$1");
         pattern = Pattern.compile("\\s{3,}[a-z](?: = |\\.).+", Pattern.MULTILINE);
         challenge = pattern.matcher(challenge).replaceAll("");
-        pattern = Pattern.compile("'; \\d+'", Pattern.MULTILINE);
+        pattern = Pattern.compile("a\\.value = .+", Pattern.MULTILINE);
         challenge = pattern.matcher(challenge).replaceAll("");
 
         ScriptEngine engine = new ScriptEngineManager().getEngineByName("javascript");
@@ -365,12 +380,13 @@ public class SiteParser {
         }
 
         HashMap<String, String> params = new HashMap<>();
+        params.put("s", s);
         params.put("jschl_vc", jsChlVc);
         params.put("pass", pass);
         params.put("jschl_answer", String.format("%.10f", answer));
 
         try {
-            Thread.sleep(6000);
+            Thread.sleep(timeout);
         } catch (InterruptedException e) {
         }
 
