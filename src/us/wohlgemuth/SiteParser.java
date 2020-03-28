@@ -259,20 +259,14 @@ public class SiteParser {
     private String getAssignments(Document document) {
         StringBuilder assignmentBuilder = new StringBuilder();
 
-        Elements eAssignments = document.getElementsByClass("rowhi");
+        Elements eAssignments = document.getElementsByAttributeValueStarting("click", "goassign");
         for (Element eAssignment : eAssignments) {
-            Element container = eAssignment.child(0);
-            Boolean bFirst = true;
-            for (Element child : container.children()) {
-                if (!child.text().isEmpty()) {
-                    if (!bFirst) {
-                        assignmentBuilder.append(" ");
-                    }
-                    assignmentBuilder.append(child.text());
-                    bFirst = false;
-                }
+            Elements items = eAssignment.getAllElements();
+            if (items.size() != 0) {
+                Element item = items.first();
+                assignmentBuilder.append(item.text());
+                assignmentBuilder.append("\n");
             }
-            assignmentBuilder.append("\n");
         }
         return assignmentBuilder.toString();
     }
