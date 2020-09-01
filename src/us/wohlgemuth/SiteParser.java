@@ -150,42 +150,36 @@ public class SiteParser {
     }
 
     private HashMap<Integer, String> getClasses(Document document) throws SiteException {
-        Elements elements = document.getElementsByTag("script");
-        if (elements.size() <= 0) {
-            throw new SiteException("unable to determine class menu script");
-        }
-        Element element = null;
-        for (Element e : elements) {
-            if (e.data().contains("menu(\'classmenu\'")) {
-                element = e;
-                break;
-            }
-        }
-        if (element == null) {
-            throw new SiteException("unable to determine class menu script");
-        }
+        Elements elements = document.getElementsByAttributeValueStarting("click", "postval(\'class1\'");
 
-        String menu = element.data();
-        Pattern menuPattern = Pattern.compile("\\[(.*?)\\]");
-        Matcher menuMatcher = menuPattern.matcher(menu);
+        if (elements.size() <= 0) {
+            throw new SiteException("unable to determine classes from clickable tabs");
+        }
 
         HashMap<Integer, String> classes = new HashMap<>();
 
-        while (menuMatcher.find()) {
-            String nameValuePair = menuMatcher.group(1);
-            Pattern nameValuePairPattern = Pattern.compile("\\\"(.*?)\\\"");
-            Matcher nameValuePairMatcher = nameValuePairPattern.matcher(nameValuePair);
+        for (Element e: elements){
 
-            if (!nameValuePairMatcher.find()) {
-                throw new SiteException("unable to determine classes");
-            }
-            String name = nameValuePairMatcher.group(1);
-            if (!nameValuePairMatcher.find()) {
-                throw new SiteException("unable to determine classes");
-            }
-            String value = nameValuePairMatcher.group(1);
+            String attrClick = e.attr("click");
 
-            classes.put(new Integer(name), value);
+            Pattern menuPattern = Pattern.compile("'class1',(.*?)\\)");
+            Matcher menuMatcher = menuPattern.matcher(attrClick);
+
+            if (!menuMatcher.find()) {
+                throw new SiteException("unable to determine a class id");
+            }
+
+            String classid = menuMatcher.group(1);
+
+            Elements classnavElements = e.getElementsByClass("classnav");
+
+            if (classnavElements.size() <= 0) {
+                throw new SiteException("unable to determine class name from clickable tab");
+            }
+
+            String classname = classnavElements.get(0).text().trim();
+
+            classes.put(new Integer(classid), classname);
         }
 
         return classes;
@@ -198,7 +192,7 @@ public class SiteParser {
         }
         Element element = null;
         for (Element e : elements) {
-            if (e.data().contains("menu(\'termmenu\'")) {
+            if (e.data().contains("menu(\'datemenu1\'")) {
                 element = e;
                 break;
             }
@@ -276,6 +270,7 @@ public class SiteParser {
         Iterator<Integer> it = classes.iterator();
         while (it.hasNext()) {
             Integer classId = it.next();
+            params.put("to", "grades");
             params.put("class1", classId.toString());
             Document document = navigate(url, cookies, params);
             String assignments = getAssignments(document);
@@ -304,7 +299,7 @@ public class SiteParser {
             document = navigate(formUrl, cookies, params);
             formUrl = getFormURL(document);
             params = getFormParams(document);
-            params.put("to", "grades");
+            params.put("to", "todo");
             document = navigate(formUrl, cookies, params);
             String studentName = getStudentName(document);
             String termName = getTermName(document);
