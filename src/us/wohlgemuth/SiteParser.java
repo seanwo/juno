@@ -240,7 +240,7 @@ public class SiteParser {
     }
 
     private String getStudentName(Document document) throws SiteException {
-        Elements elements = document.getElementsByAttributeValue("id", "studtab");
+        Elements elements = document.getElementsByClass("toptabnull");
         if (elements.size() != 1) {
             throw new SiteException("unable to determine current student");
         }
