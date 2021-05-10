@@ -31,7 +31,6 @@ public class SiteParser {
     private URL url;
     private String cookie;
 
-    private final String SiteCookieName = "__cfduid";
     private final String ClearanceCookieName = "cf_clearance";
     private final String UserAgentString = "Mozilla/5.0 (Windows NT 6.3; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/55.0.2883.87 Safari/537.36";
 
@@ -286,7 +285,6 @@ public class SiteParser {
             Connection.Response response = getResponse(connection);
             Map<String, String> cookies;
             ArrayList<String> cookieNames = new ArrayList<>();
-            cookieNames.add(SiteCookieName);
             if (response.body().contains("jschl-answer")) {
                 response = solveChallenge(response);
                 cookieNames.add(ClearanceCookieName);
