@@ -55,6 +55,7 @@ public class Configuration {
     private String smtpHost;
     private String smtpUser;
     private String smtpPassword;
+    private String smtpFrom;
     private Integer intervalMinutes = 0;
     private ArrayList<Site> sites = new ArrayList<>();
 
@@ -82,6 +83,8 @@ public class Configuration {
         return smtpPassword;
     }
 
+    public String getSmtpFrom() { return smtpFrom; }
+
     public Integer getIntervalMinutes() {
         return intervalMinutes;
     }
@@ -104,6 +107,7 @@ public class Configuration {
             smtp.setAttribute("host", "smtp.gmail.com");
             smtp.setAttribute("user", "user@gmail.com");
             smtp.setAttribute("password", "password");
+            smtp.setAttribute("from", "user@gmail.com");
             root.appendChild(smtp);
             Element site = doc.createElement("site");
             site.setAttribute("url", "https://login.jupitered.com/login/private.php?######-#-##########");
@@ -152,6 +156,7 @@ public class Configuration {
         smtpHost = eSmtp.getAttribute("host");
         smtpUser = eSmtp.getAttribute("user");
         smtpPassword = eSmtp.getAttribute("password");
+        smtpFrom = eSmtp.getAttribute("from");
         if ((null == smtpHost) || (smtpHost.isEmpty())) {
             throw new ConfigurationException("smtp node missing required host attribute");
         }
@@ -160,6 +165,9 @@ public class Configuration {
         }
         if ((null == smtpPassword) || (smtpPassword.isEmpty())) {
             throw new ConfigurationException("smtp node missing required password attribute");
+        }
+        if ((null == smtpFrom) || (smtpFrom.isEmpty())) {
+            throw new ConfigurationException("smtp node missing required from attribute");
         }
     }
 

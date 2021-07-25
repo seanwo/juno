@@ -15,11 +15,13 @@ public class Notifier {
     String host;
     String user;
     String password;
+    String from;
 
-    public Notifier(String host, String user, String password) {
+    public Notifier(String host, String user, String password, String from) {
         this.host = host;
         this.user = user;
         this.password = password;
+        this.from = from;
     }
 
     public void sendEmail(String subject, String body, ArrayList<String> emailAddresses) {
@@ -29,7 +31,7 @@ public class Notifier {
         Session session = Session.getInstance(props, null);
         Message msg = new MimeMessage(session);
         try {
-            msg.setFrom(new InternetAddress(user));
+            msg.setFrom(new InternetAddress(from));
             StringBuilder recipients = new StringBuilder();
             Boolean first = true;
             for (String emailAddress : emailAddresses) {

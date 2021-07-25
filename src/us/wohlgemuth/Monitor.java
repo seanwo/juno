@@ -9,7 +9,7 @@ public class Monitor {
 
     public Monitor(Configuration config) {
         this.config = config;
-        notifier = new Notifier(config.getSmtpHost(), config.getSmtpUser(), config.getSmtpPassword());
+        notifier = new Notifier(config.getSmtpHost(), config.getSmtpUser(), config.getSmtpPassword(), config.getSmtpFrom());
     }
 
     private StudentData getCurrentStudentData(URL url, String cookie) {
